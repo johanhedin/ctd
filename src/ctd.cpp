@@ -7,10 +7,10 @@
 
 static const std::string VERSION_STR{"0.99rc1"};
 
-void worker_function(void) {
+void worker_function(const std::string& arg) {
     using namespace std::chrono_literals;
 
-    std::cout << "Doing some work..."  << std::endl;
+    std::cout << "Working on arg: " << arg << "..."  << std::endl;
     std::this_thread::sleep_for(2000ms);
     std::cout << "Done." << std::endl;
 }
@@ -47,7 +47,8 @@ int main(int argc, char** argv) {
 
     std::cout << "Using config file: " << cfg_file << std::endl;
 
-    std::thread worker(worker_function);
+    std::string item{"one"};
+    std::thread worker(worker_function, item);
     worker.join();
 
     return 0;
