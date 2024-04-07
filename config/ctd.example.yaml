@@ -1,0 +1,215 @@
+---
+# ctd configuration file example
+
+# Global configuration
+main:
+    # CSV file with tag to id mappings. The file must use comma (,) as
+    # field separator and the first row must be a header row with the fields:
+    # "tag,id".
+    #
+    # tag is a number between 0 and 1000. id is a string that should be used as
+    # id when the tag is present.
+    #
+    # The file will be re-read when updated and must be updated atomically, i.e.
+    # being moved into place, not copied.
+    #
+    # Example file:
+    #    tag,id
+    #    123,id_one
+    #    2343,od_001
+    #    3421,Nice_id_34
+    #
+    # Optional.
+    tag_mappings: /usr/share/ctd/tag_mappings.csv
+
+    # Enable the build in webserver by specifying the IP address(es) the
+    # webserver should listen on. Comma separated list with IP address followed
+    # by colon and port number. Use * to bind to all interfaces.
+    #
+    # Examples:
+    #   127.0.0.1:8080
+    #   192.168.0.1:8080,127.0.0.1:8080
+    #   *:8080
+    #
+    # Optional.
+    listen: 127.0.0.1:8080,*:8080
+
+
+
+# Logging configuration. Multiple log outputs can be configured simultaneously,
+# e.g. syslog and file. At least one log output must be specified.
+#
+# Available log output types are: 'stdout', 'syslog' and 'file'.
+logging:
+    # Log level. Can be any of the following:
+    #   'err'      - Log error messages
+    #   'warn'     - Log error and warning messages
+    #   'info'     - Log error, warning and info messages
+    #   'debug'    - Log error, warning, info and debug messages
+    #
+    # Log level can also be set individually for inputs and/or outputs and will
+    # in that case override the level set here.
+    #
+    # Mandatory.
+    level: info
+
+    # Log to stdout
+    stdout:
+        # Whether stdout output should be activated or not. yes/no.
+        #
+        # Mandatory.
+        activate: no
+
+    # Log to syslog on this host
+    syslog:
+        # Whether syslog output should be activated or not. yes/no.
+        #
+        # Mandatory.
+        activate: yes
+
+        # Facility to use. Names according to the facilitynames array in
+        # /usr/include/sys/syslog.h, e.g. 'user', 'local0', 'local3', 'auth'
+        # and so on.
+        #
+        # Mandatory.
+        facility: user
+
+    # Log to file on disk
+    file:
+        # Whether file output should be activated or not. yes/no.
+        #
+        # Mandatory.
+        activate: yes
+
+        # Directory to write log files into. Must exist and be writable for the
+        # # user ctd is running as.
+        #
+        # Mandatory.
+        dir: /var/log/ctd
+
+        # How often to create a new log file. Acceptable values are: 'hourly',
+        # 'daily' or 'monthly'. If size (see below) is also given and the file
+        # reaches that size before this periodicity, a new file is created
+        # anyway. Defaults to 'hourly' if not set.
+        #
+        # Optional.
+        periodicity: daily
+
+        # Size in bytes for a log file before a new one is created. If
+        # periodicity (see above) is also given and that periodicity is reached
+        # before the file reaches this size, a new file is created anyway.
+        # Defaults to 32MiB if not set.
+        #
+        # Supports both SI and IEC suffixes, i.e. B, kB, MB, GB, KiB, MiB and
+        # GiB. Decimal numbers (i.e. 2.5MiB) are not supported.
+        #
+        # Optional.
+        size: 3MiB
+
+        # Max number of files to keep in the directory. When this limit is
+        # reached, the oldest file is removed. This mechanizm is used together
+        # with max_size (see below). Whatever limit that kicks in first
+        # determines when old files are removed. Defaults to 4 if not set.
+        #
+        # Optional.
+        max_files: 8
+
+        # Max allowed size in bytes of all files in the directory. When this
+        # limit is reached, the oldest file is removed. This mechanizm is used
+        # together with max_files (see above). Whatever limit that kicks in first
+        # determines when old files are removed. Defaults to 128MiB if not set.
+        #
+        # Supports both SI and IEC suffixes, i.e. B, kB, MB, GB, KiB, MiB and
+        # GiB. Decimal numbers (i.e. 2.5MiB) are not supported.
+        #
+        # Optional.
+        max_size: 512MiB
+
+
+
+# Input configuration
+inputs:
+    # Descriptive name of the input. Used in different log outputs. Only
+    # characters [a-zA-Z0-9-_] are allowed.
+    #
+    # Mandatory.
+  - name: input1
+
+    # Direcory from which to read files. Must exist and be readable/writable
+    # for the user ctd is running as. Files _must_ be moved into the
+    # directory atomically, not copied. Files beginning with a dot (.)
+    # are ignored.
+    #
+    # When a file is processed, it is removed from the directory. Files are
+    # processed in lexicographical order order based on file name so make sure
+    # that the filenames begin with a monotonically increasing value, e.g. a
+    # timestamp.
+    #
+    # Mandatory.
+    dir: /var/lib/ctd/inputs/input1/in
+
+    # id to use for this input. If left out, 'tag_mappings' must be set
+    # in the 'main' section. Only characters [a-zA-Z0-9-_:] are allowed.
+    #
+    # Optional.
+    id: "123454"
+
+    # Take care of residue data from input files. Every input file that
+    # produce residue data will result in a file in 'residue.dir' with the
+    # same name as the input file.
+    #
+    # Optional.
+    residue:
+        # Residue directory. Must exist and must be readable/writable for the
+        # user that ctd is running as.
+        #
+        # Mandatory.
+        dir: /var/lib/ctd/inputs/input1/residue
+
+        # Max number of files to keep in the directory. When this limit is
+        # reached, the oldest file is removed. This mechanizm is used together
+        # with max_size (see below). Whatever limit that kicks in first
+        # determines when old files are removed. Defaults to 100 if not set.
+        #
+        # Optional.
+        max_files: 1440
+
+        # Max allowed size in bytes of all files in the directory. When this
+        # limit is reached, the oldest file is removed. This mechanizm is used
+        # together with max_files (see above). Whatever limit that kicks in first
+        # determines when old files are removed. Defaults to 512MiB if not set.
+        #
+        # Supports both SI and IEC suffixes, i.e. B, kB, MB, GB, KiB, MiB and
+        # GiB. Decimal numbers (i.e. 2.5MiB) are not supported.
+        #
+        # Optional.
+        max_size: 1GiB
+
+    # Log level for this input. Defaults to what is set as 'level' in the
+    # logging section if left out.
+    #
+    # Optional.
+    log_level: debug
+
+  - name: input2
+    dir: /var/lib/ctd/inputs/input2/in
+
+  - name: input3
+    dir: /var/lib/ctd/inputs/input3/in
+
+
+
+# Output configuration
+outputs:
+    proc1:
+        dir: /var/lib/ctd/outputs/proc1
+        max_files: 2000
+        max_size: 10GiB
+
+    proc2:
+        dir: /var/lib/ctd/outputs/proc2
+        max_files: 2000
+        max_size: 10GiB
+        log_level: err
+
+...
