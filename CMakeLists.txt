@@ -66,6 +66,11 @@ install(TARGETS ctd RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
 # Create empty install_manifest.txt so that it does not get owned by root on sudo make install
 execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt")
 
+find_package(Threads REQUIRED)
+include_directories(${THREADS_PTHREADS_INCLUDE_DIR})
+target_link_libraries (ctd Threads::Threads)
+
+
 # Dump our config for review
 message(STATUS "The following build options will be used for ctd:")
 message(STATUS "    CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
