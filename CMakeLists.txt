@@ -66,10 +66,10 @@ install(TARGETS ctd RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
 # Create empty install_manifest.txt so that it does not get owned by root on sudo make install
 execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt")
 
+# Requre thread support in a cmake 2.8.12 portable way
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-include_directories(${THREADS_PTHREADS_INCLUDE_DIR})
-target_link_libraries (ctd ${THREADS_PTHREADS_LIBS})
-
+target_link_libraries(ctd ${CMAKE_THREAD_LIBS_INIT})
 
 # Dump our config for review
 message(STATUS "The following build options will be used for ctd:")
