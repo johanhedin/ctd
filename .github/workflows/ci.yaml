@@ -1,0 +1,35 @@
+name: C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'README**'
+      - 'LICENSE'
+  pull_request:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'README**'
+      - 'LICENSE'
+
+jobs:
+  build:
+    name: Build and install
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [ ubuntu-20.04, ubuntu-22.04 ]
+    steps:
+      - name: Install build requirements
+        run: sudo apt-get update ; sudo apt-get install -y cmake g++ pkg-config
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Configure build
+        run: rm -rf build ; cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build and install/uninstall
+        run: cd build && make && sudo make install && sudo make uninstall
