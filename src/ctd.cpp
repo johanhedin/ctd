@@ -1,10 +1,19 @@
 
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 #include <argparse/argparse.hpp>
 
 static const std::string VERSION_STR{"0.99rc1"};
+
+void worker_function(void) {
+    using namespace std::chrono_literals;
+
+    std::cout << "Doing some work..."  << std::endl;
+    std::this_thread::sleep_for(2000ms);
+    std::cout << "Done." << std::endl;
+}
 
 int main(int argc, char** argv) {
     // Create argparse instance
@@ -37,6 +46,9 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Using config file: " << cfg_file << std::endl;
+
+    std::thread worker(worker_function);
+    worker.join();
 
     return 0;
 }
