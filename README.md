@@ -1,5 +1,7 @@
 ctd
 ====
+[![C++ CI](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml/badge.svg)](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml)
+
 `ctd` is a small example how to build a C++ deamon application with cmake. It
 include examples of how to parse command line arguments and how read yaml
 config. The cmake files work with cmake from 2.8.12 all the way up to 3.28.
