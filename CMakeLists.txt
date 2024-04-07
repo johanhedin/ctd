@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12...3.10)
 
 # Define the project
-project(ctd CXX)
+project(ctd CXX C)
 
 # Import our local cmake Modules (if any)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules")
@@ -68,7 +68,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/i
 
 find_package(Threads REQUIRED)
 include_directories(${THREADS_PTHREADS_INCLUDE_DIR})
-target_link_libraries (ctd Threads::Threads)
+target_link_libraries (ctd ${THREADS_PTHREADS_LIBS})
 
 
 # Dump our config for review
