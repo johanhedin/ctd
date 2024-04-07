@@ -57,6 +57,9 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 else()
 endif()
 
+# Add argparse submodule to the include paths
+target_include_directories(ctd PUBLIC ${PROJECT_SOURCE_DIR}/argparse/include)
+
 # Add support for installing our program
 install(TARGETS ctd RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
 
