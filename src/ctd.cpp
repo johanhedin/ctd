@@ -21,10 +21,12 @@ static const std::string VERSION_STR{"0.99rc1"};
 void worker_function(const std::string& item, std::mutex& m, std::condition_variable& cv, bool& run) {
     using namespace std::chrono_literals;
 
-    std::unique_lock<std::mutex> lock(m);
-    while (run) {
+    while (true) {
         std::cout << "Worker " << item << " doing work..." << std::endl;
-        cv.wait_for(lock, 1000ms);
+
+        std::unique_lock<std::mutex> lock(m);
+        cv.wait_for(lock, 1000ms, [&run](){ return !run; });
+        if (!run) break;
     }
 
     std::cout << "Worker " << item << " stopped."  << std::endl;
@@ -124,7 +126,7 @@ int main(int argc, char** argv) {
 
     std::cout << "Signaling thread to stop..." << std::endl;
     {
-        std::unique_lock<std::mutex> lock(m);
+        std::lock_guard<std::mutex> lock(m);
         run = false;
     }
     cv.notify_all();
