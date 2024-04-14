@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    name: Build and install
+    name: Build, install, run and ininstall
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -25,13 +25,19 @@ jobs:
       - name: Install build requirements
         run: sudo apt-get update ; sudo apt-get install -y cmake g++ pkg-config
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: 'true'
 
-      - name: Configure build
+      - name: Configure
         run: rm -rf build ; cmake -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build and install/uninstall
-        run: cd build && make && sudo make install && sudo make uninstall
+      - name: Build and install
+        run: cd build && make && sudo make install
+
+      - name: run
+        run: cd build && ./ctd -c ../config/ctd.example.yaml
+
+      - name: Uninstall
+        run: cd build && sudo make uninstall
