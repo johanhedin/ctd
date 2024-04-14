@@ -4,12 +4,14 @@
 #include <chrono>
 
 #include "argparse/argparse.hpp"
-#include "config.hpp"
-#include "config_parser.hpp"
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/syslog_sink.h"
+
+#include "config.hpp"
+#include "config_parser.hpp"
+
 
 static const std::string VERSION_STR{"0.99rc1"};
 
