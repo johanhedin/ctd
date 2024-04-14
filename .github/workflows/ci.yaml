@@ -6,11 +6,13 @@ on:
     paths-ignore:
       - 'README**'
       - 'LICENSE'
+      - 'config/**'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - 'README**'
       - 'LICENSE'
+      - 'config/**'
 
 jobs:
   build:
