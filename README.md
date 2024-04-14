@@ -2,16 +2,22 @@ ctd
 ====
 [![C++ CI](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml/badge.svg)](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml)
 
-`ctd` is a small example how to build a C++17 deamon application with cmake. It
-include examples of how to parse command line arguments, how read yaml
-configuration files and how to log. The cmake files work with cmake from 2.8.12
-all the way up to 3.28.
+`ctd` is a small example how to build a C++17 deamon with cmake. It include
+examples of how to parse command line arguments, how read yaml configuration
+files and how to log. The cmake files work with cmake from 3.6 all the way up
+to 3.28.
+
+Requirements
+----
+`ctd` builds on a large set of Linux distributions as long as cmake 3.6 and
+g++ 9.x or newer are available. On CentOS 6 g++ 9.1 is available from the
+devtoolset-9 SCL and cmake 3.6 is available from EPEL.
 
 Download and build
 ----
 Clone `ctd` from GitHub with the needed submodules:
 
-    $ git clone https://github.com/johanhedin/ctd.git
+    $ git clone --recurse-submodules https://github.com/johanhedin/ctd.git
     $ cd ctd
 
 and then build with cmake:
@@ -32,6 +38,7 @@ To keep up to date with changes and updates to `ctd`, simply run:
 
     $ cd ctd
     $ git pull --ff-only
+    $ git submodule update --init --recursive
     $ cd build
     $ cmake ..
     $ make
