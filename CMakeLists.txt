@@ -43,7 +43,7 @@ target_compile_options(ctd PRIVATE -pedantic)
 
 # We use threads
 find_package(Threads REQUIRED)
-target_link_libraries (ctd Threads::Threads)
+target_link_libraries(ctd Threads::Threads)
 
 # Add argparse submodule to the include paths (argparse is include only)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/argparse/include)
