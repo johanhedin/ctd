@@ -13,7 +13,7 @@ main:
     # The file will be re-read when updated and must be updated atomically, i.e.
     # being moved into place, not copied.
     #
-    # Example file:
+    # Example file (first row is the header row):
     #    tag,id
     #    123,id_one
     #    2343,od_001
@@ -81,7 +81,7 @@ logging:
         # Mandatory.
         activate: yes
 
-        # Directory to write log files into. Must exist and be writable for the
+        # Directory to write log files into. Must exist and be writable by the
         # # user ctd is running as.
         #
         # Mandatory.
@@ -136,19 +136,19 @@ inputs:
   - name: input1
 
     # Direcory from which to read files. Must exist and be readable/writable
-    # for the user ctd is running as. Files _must_ be moved into the
+    # by the user ctd is running as. Files _must_ be moved into the
     # directory atomically, not copied. Files beginning with a dot (.)
     # are ignored.
     #
     # When a file is processed, it is removed from the directory. Files are
     # processed in lexicographical order order based on file name so make sure
     # that the filenames begin with a monotonically increasing value, e.g. a
-    # timestamp.
+    # ISO timestamp.
     #
     # Mandatory.
     dir: /var/lib/ctd/inputs/input1/in
 
-    # id to use for this input. If left out, 'tag_mappings' must be set
+    # id to use for this input. If left out, 'tag_mappings_file' must be set
     # in the 'main' section. Only characters [a-zA-Z0-9-_:] are allowed.
     #
     # Optional.
@@ -160,8 +160,8 @@ inputs:
     #
     # Optional.
     residue:
-        # Residue directory. Must exist and must be readable/writable for the
-        # user that ctd is running as.
+        # Residue directory. Must exist and must be readable/writable by the
+        # user ctd is running as.
         #
         # Mandatory.
         dir: /var/lib/ctd/inputs/input1/residue
