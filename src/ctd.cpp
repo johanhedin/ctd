@@ -2,6 +2,8 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <mutex>
+#include <condition_variable>
 
 #include "argparse/argparse.hpp"
 
@@ -15,13 +17,19 @@
 
 static const std::string VERSION_STR{"0.99rc1"};
 
-void worker_function(const std::string& arg) {
+
+void worker_function(const std::string& item, std::mutex& m, std::condition_variable& cv, bool& run) {
     using namespace std::chrono_literals;
 
-    std::cout << "Working on arg: " << arg << "..."  << std::endl;
-    std::this_thread::sleep_for(2000ms);
-    std::cout << "Done." << std::endl;
+    std::unique_lock<std::mutex> lock(m);
+    while (run) {
+        std::cout << "Worker " << item << " doing work..." << std::endl;
+        cv.wait_for(lock, 1000ms);
+    }
+
+    std::cout << "Worker " << item << " stopped."  << std::endl;
 }
+
 
 int main(int argc, char** argv) {
     // Create argparse instance
@@ -33,7 +41,10 @@ int main(int argc, char** argv) {
         .help("configuration file. Defaults to /etc/ctd/ctd.yaml if not set")
         .metavar("FILE");
     program.add_argument("--validate")
-        .help("validate the config file and then exit")
+        .help("validate the config file and exits")
+        .flag();
+    program.add_argument("--dump")
+        .help("dumps the config file to stdout and exits")
         .flag();
 
     // Parse
@@ -52,10 +63,16 @@ int main(int argc, char** argv) {
     std::string cfg_file = program.is_used("-c") ? program.get<std::string>("-c") : "/etc/ctd/ctd.yaml";
 
     if (program["--validate"] == true) {
-        std::cout << "Validating config file: " << cfg_file << "..." << std::endl;
         auto config = ctd::parse_config(cfg_file);
         if (!config) return 3;
+        std::cout << "Config file: " << cfg_file << " is valid." << std::endl;
+        return 0;
+    }
 
+    if (program["--dump"] == true) {
+        auto config = ctd::parse_config(cfg_file);
+        if (!config) return 3;
+        ctd::dump_config(*config);
         return 0;
     }
 
@@ -64,10 +81,6 @@ int main(int argc, char** argv) {
     if (!config) return 3;
 
     std::cout << "config.main.tag_mappings_file=" << config->main.tag_mappings_file << std::endl;
-
-    std::string item{"one"};
-    std::thread worker(worker_function, item);
-    worker.join();
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_level(spdlog::level::trace);
@@ -91,6 +104,35 @@ int main(int argc, char** argv) {
 
     net_logger->info("Logging from the net logger!");
     db_logger->warn("Logging from the db logger!");
+
+    std::string item1{"one"};
+    std::string item2{"two"};
+
+    std::mutex m;
+    std::condition_variable cv;
+    bool run{true};
+
+    std::thread worker1(worker_function, item1, std::ref(m), std::ref(cv), std::ref(run));
+    std::thread worker2(worker_function, item2, std::ref(m), std::ref(cv), std::ref(run));
+
+    {
+        std::unique_lock<std::mutex> lock(m);
+        std::cout << "Main program sleeping for 5s..." << std::endl;
+    }
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(5000ms);
+
+    std::cout << "Signaling thread to stop..." << std::endl;
+    {
+        std::unique_lock<std::mutex> lock(m);
+        run = false;
+    }
+    cv.notify_all();
+
+    worker1.join();
+    worker2.join();
+
+    std::cout << "ctd stopped." << std::endl;
 
     return 0;
 }
