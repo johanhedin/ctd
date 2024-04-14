@@ -7,6 +7,10 @@
 #include "config.hpp"
 #include "config_parser.hpp"
 
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/syslog_sink.h"
+
 static const std::string VERSION_STR{"0.99rc1"};
 
 void worker_function(const std::string& arg) {
@@ -62,6 +66,29 @@ int main(int argc, char** argv) {
     std::string item{"one"};
     std::thread worker(worker_function, item);
     worker.join();
+
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_level(spdlog::level::trace);
+
+    auto syslog_sink = std::make_shared<spdlog::sinks::syslog_sink_mt>("ctd", 0, LOG_USER, false);
+    syslog_sink->set_level(spdlog::level::trace);
+
+    spdlog::logger logger("", {console_sink, syslog_sink});
+    logger.set_level(spdlog::level::trace);
+
+    logger.trace("Trace, trace!");
+    logger.debug("Debug, debug!");
+    logger.info("Info, info!");
+    logger.warn("Warn, warn!");
+    logger.error("Error, error!");
+    logger.critical("Critical, critical!");
+
+    auto net_logger = std::make_shared<spdlog::logger>("net", syslog_sink);
+    auto hw_logger  = std::make_shared<spdlog::logger>("hw",  syslog_sink);
+    auto db_logger  = std::make_shared<spdlog::logger>("db",  syslog_sink); 
+
+    net_logger->info("Logging from the net logger!");
+    db_logger->warn("Logging from the db logger!");
 
     return 0;
 }

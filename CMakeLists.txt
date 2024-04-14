@@ -48,6 +48,9 @@ target_link_libraries (ctd Threads::Threads)
 # Add argparse submodule to the include paths (argparse is include only)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/argparse/include)
 
+# Add spdlog submodule to the include paths (we use spdlog as include only)
+target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/spdlog/include)
+
 # Add yaml-cpp as a static submodule (.a)
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/yaml-cpp/include)
