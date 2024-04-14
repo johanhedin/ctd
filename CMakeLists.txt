@@ -31,7 +31,7 @@ if(NOT TARGET uninstall)
 endif()
 
 # Define the target for our program
-add_executable(ctd src/ctd.cpp)
+add_executable(ctd src/ctd.cpp src/config_parser.cpp)
 
 # Add compile and link options to our target
 target_compile_options(ctd PRIVATE -std=gnu++17)

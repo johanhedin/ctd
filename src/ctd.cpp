@@ -3,7 +3,9 @@
 #include <thread>
 #include <chrono>
 
-#include <argparse/argparse.hpp>
+#include "argparse/argparse.hpp"
+#include "config.hpp"
+#include "config_parser.hpp"
 
 static const std::string VERSION_STR{"0.99rc1"};
 
@@ -31,21 +33,31 @@ int main(int argc, char** argv) {
     // Parse
     try {
         program.parse_args(argc, argv);
-    } catch (const std::exception& err) {
-        std::cerr << err.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
         std::cerr << program;
-        std::exit(1);
+        return 1;
+    } catch (...) {
+        std::cerr << "Error: Unhandled exception while parsing command line arguments." << std::endl;
+        return 2;
     }
 
     // Extract arguments given
     std::string cfg_file = program.is_used("-c") ? program.get<std::string>("-c") : "/etc/ctd/ctd.yaml";
 
     if (program["--validate"] == true) {
-        std::cout << "Validating config file: " << cfg_file << std::endl;
+        std::cout << "Validating config file: " << cfg_file << "..." << std::endl;
+        auto config = ctd::parse_config(cfg_file);
+        if (!config) return 3;
+
         return 0;
     }
 
-    std::cout << "Using config file: " << cfg_file << std::endl;
+    std::cout << "Parsing config file: " << cfg_file << "..." << std::endl;
+    auto config = ctd::parse_config(cfg_file);
+    if (!config) return 3;
+
+    std::cout << "config.main.tag_mappings_file=" << config->main.tag_mappings_file << std::endl;
 
     std::string item{"one"};
     std::thread worker(worker_function, item);
