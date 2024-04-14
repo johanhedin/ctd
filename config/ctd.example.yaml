@@ -20,7 +20,7 @@ main:
     #    3421,Nice_id_34
     #
     # Optional.
-    tag_mappings: /usr/share/ctd/tag_mappings.csv
+    tag_mappings_file: /usr/share/ctd/tag_mappings.csv
 
     # Enable the build in webserver by specifying the IP address(es) the
     # webserver should listen on. Comma separated list with IP address followed
