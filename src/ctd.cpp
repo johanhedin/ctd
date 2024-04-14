@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
     // Configure argparse instance
     program.add_description("A template daemon");
     program.add_argument("-c", "--config-file")
-        .help("configuration file. Defaults to /etc/ctd/ctd.yaml if not set")
+        .help("configuration file to use. Defaults to /etc/ctd/ctd.yaml if not set")
         .metavar("FILE");
     program.add_argument("--validate")
-        .help("validate the config file and exits")
+        .help("validates the config file and exits")
         .flag();
     program.add_argument("--dump")
         .help("dumps the config file to stdout and exits")
