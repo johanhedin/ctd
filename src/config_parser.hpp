@@ -8,7 +8,8 @@
 #include "config.hpp"
 
 namespace ctd {
-std::optional<Config> parse_config(const std::string& cfg_file);
-}
+std::optional<Config> parse_config(const std::string& cfg_file) noexcept;
+void dump_config(const Config& config) noexcept;
+} // namespace ctd
 
 #endif // CONFIG_PARSER_HPP
