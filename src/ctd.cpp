@@ -14,6 +14,9 @@
 #include "config.hpp"
 #include "config_parser.hpp"
 
+// REST server candidates:
+//   - https://github.com/pistacheio/pistache
+//   - https://github.com/oatpp/oatpp
 
 static const std::string VERSION_STR{"0.99rc1"};
 
