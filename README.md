@@ -2,10 +2,10 @@ ctd
 ====
 [![C++ CI](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml/badge.svg)](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml)
 
-`ctd` is a small example how to build a deamon with threads in C++17 and with
-cmake. It include examples of how to parse command line arguments with `argparse`,
+`ctd` is a small skeleton of an threded C++17 deamon build with cmake. The
+skeleton include examples of how to parse command line arguments with `argparse`,
 how read yaml configuration files with `yaml-cpp` and how to log with `spdlog`.
-The cmake files work with cmake from 3.6 all the way up to 3.28.
+The cmake configuration works with cmake from 3.6 all the way up to 3.28.
 
 Requirements
 ----
@@ -15,26 +15,26 @@ devtoolset-9 SCL and cmake 3.6 is available from EPEL.
 
 Download and build
 ----
-Clone `ctd` from GitHub with the needed submodules:
+Clone `ctd` from GitHub and get the required submodules at the same time:
 
     $ git clone --recurse-submodules https://github.com/johanhedin/ctd.git
     $ cd ctd
 
-and then build with cmake:
+Then configure and build with cmake:
 
     $ mkdir build
     $ cd build
     $ cmake .. -DCMAKE_BUILD_TYPE=Release
     $ make
 
-`cte` accepts the following build options on the command line (set with -D):
+`ctd` cmake accepts the following command line configuration options (set with -D):
 
  * `CMAKE_BUILD_TYPE={Debug,Release,RelWithDebInfo}` Defaults to `Debug` if not set
  * `CMAKE_INSTALL_PREFIX=<path>` Defaults to `/usr/local` if not set
 
 Keep up to date with changes
 ----
-To keep up to date with changes and updates to `ctd`, simply run:
+To keep up to date with changes in `ctd`, simply run:
 
     $ cd ctd
     $ git pull --ff-only
