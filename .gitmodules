@@ -8,3 +8,6 @@
 	path = spdlog
 	url = https://github.com/gabime/spdlog.git
 	branch = v1.x
+[submodule "cpp-httplib"]
+	path = cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib.git
