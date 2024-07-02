@@ -2,13 +2,15 @@ name: C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - '*'
     paths-ignore:
       - 'README**'
       - 'LICENSE'
       - 'config/**'
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - '*'
     paths-ignore:
       - 'README**'
       - 'LICENSE'
