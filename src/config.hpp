@@ -10,18 +10,19 @@
 
 namespace ctd {
 
-// ctd use the same names and values for log levels as syslog
+// ctd use the same names and values for log levels as syslog, but only a
+// subset
 static const std::map<std::string, int> level_map = {
-    { "alert",   LOG_ALERT },
+    //{ "alert",   LOG_ALERT },
     { "crit",    LOG_CRIT },
     { "debug",   LOG_DEBUG },
-    { "emerg",   LOG_EMERG },
+    //{ "emerg",   LOG_EMERG },
     { "err",     LOG_ERR },
-    { "error",   LOG_ERR },     // DEPRECATED
+    //{ "error",   LOG_ERR },     // DEPRECATED
     { "info",    LOG_INFO },
-    { "notice",  LOG_NOTICE },
-    { "panic",   LOG_EMERG },   // DEPRECATED
-    { "warn",    LOG_WARNING }, // DEPRECATED
+    //{ "notice",  LOG_NOTICE },
+    //{ "panic",   LOG_EMERG },   // DEPRECATED
+    //{ "warn",    LOG_WARNING }, // DEPRECATED
     { "warning", LOG_WARNING }
 };
 
@@ -36,7 +37,7 @@ static const std::map<std::string, int> facility_map = {
     { "lpr",      LOG_LPR },
     { "mail",     LOG_MAIL },
     { "news",     LOG_NEWS },
-    { "security", LOG_AUTH },  // DEPRECATED
+    //{ "security", LOG_AUTH },  // DEPRECATED
     { "syslog",   LOG_SYSLOG },
     { "user",     LOG_USER },
     { "uucp",     LOG_UUCP },
