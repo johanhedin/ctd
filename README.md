@@ -2,17 +2,20 @@ ctd
 ====
 [![C++ CI](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml/badge.svg)](https://github.com/johanhedin/ctd/actions/workflows/ci.yaml)
 
-`ctd` is a small skeleton of a threded C++17 deamon. The skeleton include
-examples of how to parse command line arguments with `argparse`, how read yaml
-configuration files with `yaml-cpp` and how to log with `spdlog`. CMake is used
-to build the code and the configuration works with cmake from 3.6 all the way
-up to 3.28.
+`ctd` is a skeleton of a small threded deamon written in  C++17. The skeleton
+include examples of how to parse command line arguments with `argparse`, how read
+yaml configuration files with `yaml-cpp`, how to log with `spdlog` and how to
+embed a small HTTP REST server with `cpp-httplib`. CMake is used as the build
+system and the configuration works with cmake from 3.6 all the way up to 3.28.
 
 Requirements
 ----
 `ctd` builds on a great variety of Linux distributions as long as cmake 3.6 and
-g++ 9.x or newer are available. On CentOS 6 g++ 9.1 is available from the
-devtoolset-9 SCL and cmake 3.6 is available from EPEL.
+g++ 9.x or newer are available. It even builds on the EOL CentOS 6 (where g++ 9.1
+is available from the devtoolset-9 SCL and cmake 3.6 is available from EPEL).
+
+All external libraries that `ctd` depend on are linked as git submodules and
+the compiled binary does not link to any extra libraries.
 
 Download and build
 ----
