@@ -22,17 +22,24 @@ main:
     # Optional.
     tag_mappings_file: /usr/share/ctd/tag_mappings.csv
 
-    # Enable the build in webserver by specifying the IP address(es) the
-    # webserver should listen on. Comma separated list with IP address followed
-    # by colon and port number. Use * to bind to all interfaces.
+    # Enable the build in REST server by specifying the IPv4 and/or IPv6
+    # address(es) the server should listen on. Comma separated string with IP
+    # address followed by a colon and then the port number. Use 0.0.0.0 to bind
+    # to all interfaces. To specify an IPv6 address, use angle brackest around
+    # the address part to separate it from the port, i.e.
+    # [fd71:5279:659e:0:5984:6c6c:9324:ad31]:8080 and add the required zone
+    # id like: [fe80::48eb:1208:3ed:5d8a%eth0]:8080 if the address is a link
+    # local (for the eth0 interface in this example).
     #
     # Examples:
     #   127.0.0.1:8080
     #   192.168.0.1:8080,127.0.0.1:8080
-    #   *:8080
+    #   0.0.0.0:8080
+    #   0.0.0.0:8090,127.0.0.1:8080
+    #   [fd71:5279:659e:0:5984:6c6c:9324:ad31]:8080,127.0.0.1:9090
     #
     # Optional.
-    listen: 127.0.0.1:8080,*:8080
+    listen: 127.0.0.1:8080,[::1]:8090
 
 
 
@@ -42,25 +49,28 @@ main:
 # Available log output types are: 'stdout', 'syslog' and 'file'.
 logging:
     # Log level. Can be any of the following:
-    #   'err'      - Log error messages
-    #   'warn'     - Log error and warning messages
-    #   'info'     - Log error, warning and info messages
-    #   'debug'    - Log error, warning, info and debug messages
+    #   'crit'     - Log critical messages only
+    #   'err'      - Log critical and error messages
+    #   'warning'  - Log critical, error and warning messages
+    #   'info'     - Log critiacl, error, warning and info messages
+    #   'debug'    - Log critical, error, warning, info and debug messages
     #
     # Log level can also be set individually for inputs and/or outputs and will
     # in that case override the level set here.
     #
     # Mandatory.
-    level: info
+    level: debug
 
     # Log to stdout
     stdout:
         # Whether stdout output should be activated or not. yes/no.
         #
         # Mandatory.
-        activate: no
+        activate: yes
 
-    # Log to syslog on this host
+    # Log to syslog on this host. Please note that many rsyslog configurations
+    # only log messages of level info or higher severity, i.e. not debug. Check
+    # your rsyslog config and adjust accordingly if you don't se debug messages
     syslog:
         # Whether syslog output should be activated or not. yes/no.
         #
@@ -79,7 +89,7 @@ logging:
         # Whether file output should be activated or not. yes/no.
         #
         # Mandatory.
-        activate: yes
+        activate: no
 
         # Directory to write log files into. Must exist and be writable by the
         # # user ctd is running as.
