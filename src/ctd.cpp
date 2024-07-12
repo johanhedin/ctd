@@ -25,13 +25,9 @@
 #include "config.hpp"
 #include "config_parser.hpp"
 
-// REST server candidates:
+// REST server candidates (besides cpp-httplib):
 //   - https://github.com/pistacheio/pistache
 //   - https://github.com/oatpp/oatpp
-//   - https://github.com/yhirose/cpp-httplib
-
-// JSON handling:
-//   - https://github.com/nlohmann/json
 
 // How to use spdlog
 //   - https://www.youtube.com/watch?v=p2U0VvILysg
@@ -41,23 +37,24 @@
 std::function<void(int)> shutdown_handler;
 void signal_handler(int signal) { shutdown_handler(signal); }
 
+
 static const std::string PROGRAM_NAME_STR{"ctd"};
 static const std::string PROGRAM_VERSION_STR{"0.99rc1"};
 static const std::string DEFAULT_CFG_FILE{"/etc/ctd/ctd.yaml"};
 
 
-void worker_function(const std::string& item, std::mutex& m, std::condition_variable& cv, bool& run, spdlog::logger &logger) {
+void worker_function(const std::string& item, std::mutex& m, std::condition_variable& cv, bool& run) {
     using namespace std::chrono_literals;
 
     while (true) {
-        logger.info("Worker {} is doing work...", item);
+        spdlog::info("Worker {} is doing work...", item);
 
         std::unique_lock<std::mutex> lock(m);
         cv.wait_for(lock, 1000ms, [&run](){ return !run; });
         if (!run) break;
     }
 
-    logger.info("Worker {} stopped.", item);
+    spdlog::info("Worker {} stopped.", item);
 }
 
 
@@ -153,11 +150,11 @@ int main(int argc, char** argv) {
     // Logging is now setup. All printouts from now on will be via the log
 
     // Test the log
-    spdlog::debug("Debug, debug!");
-    spdlog::info("Info, info!");
-    spdlog::warn("Warn, warn!");
-    spdlog::error("Error, error!");
-    spdlog::critical("Critical, critical!");
+    spdlog::debug("Testing debug: debug");
+    spdlog::info("Testing info: info");
+    spdlog::warn("Testing warn: warn");
+    spdlog::error("Testing error: error");
+    spdlog::critical("Testing critical: critical");
     spdlog::info(" ");
 
     spdlog::info("Starting...");
@@ -188,8 +185,8 @@ int main(int argc, char** argv) {
     std::condition_variable cv;
     bool thread_run{true};
 
-    std::thread worker1(worker_function, item1, std::ref(m), std::ref(cv), std::ref(thread_run), std::ref(logger));
-    std::thread worker2(worker_function, item2, std::ref(m), std::ref(cv), std::ref(thread_run), std::ref(logger));
+    std::thread worker1(worker_function, item1, std::ref(m), std::ref(cv), std::ref(thread_run));
+    std::thread worker2(worker_function, item2, std::ref(m), std::ref(cv), std::ref(thread_run));
 
     {
         std::unique_lock<std::mutex> lock(m);
