@@ -12,7 +12,7 @@ if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
     message(STATUS "Build type defaulting to Debug. Change to Relese or RelWithDebInfo with -DCMAKE_BUILD_TYPE=<choise>")
     set(CTD_TMP_BUILD_TYPE "Debug")
 else()
-   set(CTD_TMP_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+    set(CTD_TMP_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
 endif ()
 set(CMAKE_BUILD_TYPE "${CTD_TMP_BUILD_TYPE}" CACHE STRING "Choose the type of build. Options are: Debug, Release or RelWithDebInfo" FORCE)
 
