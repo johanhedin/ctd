@@ -236,7 +236,6 @@ int main(int argc, char** argv) {
         res.set_content("Hi there!\n", "text/plain");
     };
     auto api_handler = [&dict](const httplib::Request &, httplib::Response &res) {
-        std::string s = dict.dump(4);
         res.set_content(dict.dump(4) + "\n", "application/json");
     };
     auto root_handler = [](const httplib::Request &, httplib::Response &res) {
