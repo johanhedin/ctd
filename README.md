@@ -4,9 +4,10 @@ ctd
 
 `ctd` is a skeleton of a small threded deamon written in  C++17. The skeleton
 include examples of how to parse command line arguments with `argparse`, how read
-yaml configuration files with `yaml-cpp`, how to log with `spdlog` and how to
-embed a small HTTP REST server with `cpp-httplib`. CMake is used as the build
-system and the configuration works with cmake from 3.6 all the way up to 3.28.
+yaml configuration files with `yaml-cpp`, how to log with `spdlog`, how to
+embed a small HTTP REST server with `cpp-httplib` and how to handle JSON with
+`nlohmann/json`. CMake is used as the build system and the configuration works
+with cmake from 3.6 all the way up to 3.28.
 
 Requirements
 ----
