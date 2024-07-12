@@ -54,6 +54,9 @@ target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/spdlog/include)
 # Add cpp-httplig submodule to the include paths (cpp-httpdlib is include only)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/cpp-httplib)
 
+# Add nlohmann/json submodule to the include paths (nlohmann/json is include only)
+target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/json/include)
+
 # Add yaml-cpp as a static submodule (.a)
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/yaml-cpp/include)
