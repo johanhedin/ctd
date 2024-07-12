@@ -100,7 +100,7 @@ static std::optional<Config::Main> parse_main(const YAML::Node& main_node) {
             std::string element;
             std::getline(ss, element, ',');
 
-            size_t colon_pos = element.find(':');
+            size_t colon_pos = element.rfind(':');
             if (colon_pos == element.npos) {
                 std::cerr << "Error at line " << listen_node.Mark().line+1 <<
                              ": Format error for node 'main.listen'. No port given." << std::endl;
