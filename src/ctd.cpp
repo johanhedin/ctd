@@ -20,6 +20,8 @@
 
 #include "httplib.h"
 
+#include "nlohmann/json.hpp"
+
 #include "config.hpp"
 #include "config_parser.hpp"
 
@@ -207,11 +209,11 @@ int main(int argc, char** argv) {
     worker2.join();
     */
 
-    auto json_res =
-R"({
-    "status": true
-}
-)";
+    using json = nlohmann::json;
+    json dict = {
+        { "status", true },
+        { "version", PROGRAM_VERSION_STR }
+    };
 
     auto srv_pre_routing_handler = [](const auto &req, auto &res) {
         std::string remote_addr = req.remote_addr;
@@ -233,11 +235,15 @@ R"({
         res.status = httplib::StatusCode::Accepted_202;
         res.set_content("Hi there!\n", "text/plain");
     };
-    auto api_handler = [&json_res](const httplib::Request &, httplib::Response &res) {
-        res.set_content(json_res, "application/json");
+    auto api_handler = [&dict](const httplib::Request &, httplib::Response &res) {
+        std::string s = dict.dump(4);
+        res.set_content(dict.dump(4) + "\n", "application/json");
     };
     auto root_handler = [](const httplib::Request &, httplib::Response &res) {
-        res.set_content(std::string() + "{\n    \"version\": \"" + PROGRAM_VERSION_STR + "\"\n}\n", "application/json");
+        json json_res = {
+            { "version", PROGRAM_VERSION_STR }
+        };
+        res.set_content(json_res.dump(4) + "\n", "application/json");
     };
 
     if (!config->main.listen.empty()) {
