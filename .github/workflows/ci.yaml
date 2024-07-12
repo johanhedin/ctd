@@ -39,7 +39,7 @@ jobs:
         run: cd build && make && sudo make install
 
       - name: Run
-        run: ctd -c config/ctd.example.yaml
+        run: (sleep 4 && killall ctd)& ctd -c config/ctd.example.yaml
 
       - name: Uninstall
         run: cd build && sudo make uninstall
