@@ -53,6 +53,15 @@ main:
         #cert: /etc/pki/tls/certs/server.crt
         #key: /etc/pki/tls/private/server.key
 
+    # Authentication settings. If the REST server is run with https on any of
+    # it's addresses, it's possible to only allow access to clients that present
+    # a valid client certificate. The client certificate must be signed by the
+    # CA that is pointed out with the auth.ca key below.
+    #auth:
+        # Path to a PEM encoded file with the CA that the TLS clients use.
+        #
+        # Mandatory.
+        #ca: /etc/pki/tls/certs/client_ca.crt
 
 
 # Logging configuration. Multiple log outputs can be configured simultaneously,

@@ -179,6 +179,29 @@ static std::optional<Config::Main> parse_main(const YAML::Node& main_node) {
         }
     }
 
+    const auto& auth_node = main_node["auth"];
+    if (auth_node) {
+        if (!auth_node.IsMap()) {
+            std::cerr << "Error at line " << auth_node.Mark().line+1 <<
+                        ": Node 'auth' is not of kind Mapping." << std::endl;
+            return std::nullopt;
+        }
+
+        const auto& ca_node = auth_node["ca"];
+        if (!ca_node.IsDefined()) {
+            std::cerr << "Error: Node 'main.auth.ca' missing." << std::endl;
+            return std::nullopt;
+        }
+
+        if (!ca_node.IsScalar()) {
+            std::cerr << "Error at line " << ca_node.Mark().line+1 <<
+                         ": Node 'main.auth.ca' is not of kind Scalar." << std::endl;
+            return std::nullopt;
+        }
+
+        main.client_ca = ca_node.as<std::string>("");
+    }
+
     return main;
 } // parse_main
 
@@ -410,17 +433,6 @@ std::optional<Config> parse_config(const std::string& cfg_file) noexcept {
 void dump_config(const Config& config) noexcept {
     std::cout << "main:" << std::endl;
     std::cout << "    tag_mappings_file = " << (config.main.tag_mappings_file.empty() ? "<none>":config.main.tag_mappings_file) << std::endl;
-    /*
-    if (!config.main.listen.empty()) {
-        std::cout << "    listen =";
-        bool first = true;
-        for (const auto& a : config.main.listen) {
-            std::cout << (first ? " ":",") << a.first << ":" << a.second;
-            first = false;
-        }
-        std::cout << std::endl;
-    }
-    */
     if (!config.main.listen.empty()) {
         std::cout << "    listen:" << std::endl;
         int i = 0;
@@ -435,6 +447,10 @@ void dump_config(const Config& config) noexcept {
             }
             i++;
         }
+    }
+    if (config.main.client_ca != "") {
+        std::cout << "    auth:" << std::endl;
+        std::cout << "        ca = " << config.main.client_ca << std::endl;
     }
     std::cout << "logging:" << std::endl;
     std::cout << "    level = " << config.logging.levelName() << std::endl;

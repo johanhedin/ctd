@@ -68,6 +68,7 @@ public:
 
         std::string tag_mappings_file{};
         std::vector<Listen> listen{};
+        std::string client_ca{};
     };
 
     class Logging {
