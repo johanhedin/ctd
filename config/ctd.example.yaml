@@ -22,24 +22,36 @@ main:
     # Optional.
     tag_mappings_file: /usr/share/ctd/tag_mappings.csv
 
-    # Enable the build in REST server by specifying the IPv4 and/or IPv6
-    # address(es) the server should listen on. Comma separated string with IP
-    # address followed by a colon and then the port number. Use 0.0.0.0 to bind
-    # to all interfaces. To specify an IPv6 address, use angle brackest around
-    # the address part to separate it from the port, i.e.
-    # [fd71:5279:659e:0:5984:6c6c:9324:ad31]:8080 and add the required zone
-    # id like: [fe80::48eb:1208:3ed:5d8a%eth0]:8080 if the address is a link
-    # local (for the eth0 interface in this example).
+    # Enable the build in REST server by specifying a list of address/port
+    # combinations the server should bind to. One bind object can have the
+    # following keys:
     #
-    # Examples:
-    #   127.0.0.1:8080
-    #   192.168.0.1:8080,127.0.0.1:8080
-    #   0.0.0.0:8080
-    #   0.0.0.0:8090,127.0.0.1:8080
-    #   [fd71:5279:659e:0:5984:6c6c:9324:ad31]:8080,127.0.0.1:9090
+    #   - addr: <IP-address> (IPv6 address must be enclosed with [])
+    #     port: <port>
+    #     https: yes/no
+    #     cert: <path_to_pem_file_with_cert>
+    #     key: <path_to_pem_file_with_key>
     #
-    # Optional.
-    listen: 127.0.0.1:8080,[::1]:8090
+    # If binding to a IPv6 link local address, the zone (or scope) id must be
+    # added as well, e.g. [fe80::48eb:1208:3ed:5d8a%eth0] if the interface
+    # in question is eth0.
+    #
+    # To use https, support for openssl must be compiled in.
+    listen:
+      - addr: "127.0.0.1"
+        port: 8080
+      - addr: "[::1]"
+        port: 8080
+      - addr: "0.0.0.0"
+        port: 8090
+        #https: yes
+        #cert: /etc/pki/tls/certs/server.crt
+        #key: /etc/pki/tls/private/server.key
+      - addr: "[::]"
+        port: 8090
+        #https: yes
+        #cert: /etc/pki/tls/certs/server.crt
+        #key: /etc/pki/tls/private/server.key
 
 
 

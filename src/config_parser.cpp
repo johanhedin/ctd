@@ -60,6 +60,18 @@ static std::optional<std::size_t> parse_byte_value(const std::string& str) {
 } // parse_byte_value
 
 
+static bool ip_addr_valid(const std::string &addr) {
+    const std::regex ipv4("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
+    const std::regex ipv6("^\\[(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))\\]$");
+    std::smatch match;
+
+    if (std::regex_search(addr, match, ipv4)) return true;
+    if (std::regex_search(addr, match, ipv6)) return true;
+
+    return false;
+}
+
+
 static std::optional<Config::Main> parse_main(const YAML::Node& main_node) {
     Config::Main main;
 
@@ -87,45 +99,83 @@ static std::optional<Config::Main> parse_main(const YAML::Node& main_node) {
 
     const auto& listen_node = main_node["listen"];
     if (listen_node) {
-        if (!listen_node.IsScalar()) {
+        if (!listen_node.IsSequence()) {
             std::cerr << "Error at line " << listen_node.Mark().line+1 <<
-                         ": Node 'main.listen' is not of kind Scalar." << std::endl;
+                         ": Node 'main.listen' is not of kind Sequence." << std::endl;
             return std::nullopt;
         }
 
-        auto s = listen_node.as<std::string>();
-        s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
-        std::stringstream ss(s);
-        while (ss.good()) {
-            std::string element;
-            std::getline(ss, element, ',');
+        for (const auto &item : listen_node) {
+            Config::Listen l;
 
-            size_t colon_pos = element.rfind(':');
-            if (colon_pos == element.npos) {
-                std::cerr << "Error at line " << listen_node.Mark().line+1 <<
-                             ": Format error for node 'main.listen'. No port given." << std::endl;
+            l.addr = item["addr"].as<std::string>("");
+            if (l.addr == "") {
+                std::cerr << "Error at line " << item.Mark().line+1 <<
+                             ": Node 'addr' missing." << std::endl;
+                return std::nullopt;
+            }
+            if (!ip_addr_valid(l.addr)) {
+                std::cerr << "Error at line " << item.Mark().line+1 <<
+                             ": Value is not an IPv4 or IPv6 address." << std::endl;
+                return std::nullopt;
+            }
+            l.port = item["port"].as<int>(-1);
+            if (l.port == -1) {
+                std::cerr << "Error at line " << item.Mark().line+1 <<
+                             ": Node 'port' missing or missformatted." << std::endl;
                 return std::nullopt;
             }
 
-            try {
-                std::string addr = element.substr(0, colon_pos);
-                int         port = std::stoi(element.substr(colon_pos + 1));
+            l.https = item["https"].as<bool>(false);
+            if (l.https) {
+                l.cert = item["cert"].as<std::string>("");
+                if (l.cert == "") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                ": Node 'cert' missing." << std::endl;
+                    return std::nullopt;
+                }
+                l.key  = item["key"].as<std::string>("");
+                if (l.key == "") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                ": Node 'key' missing." << std::endl;
+                    return std::nullopt;
+                }
+            }
 
-                auto duplicate = std::find(main.listen.begin(), main.listen.end(), std::pair<std::string, int>{addr, port});
-                if (duplicate != main.listen.end()) {
-                    std::cerr << "Error at line " << listen_node.Mark().line+1 <<
-                                 ": Format error for node 'main.listen'. Addr/port pair repeated." << std::endl;
+            // Check if l is a duplicate
+            for (const auto &a : main.listen) {
+                if (l.addr == a.addr && l.port == a.port) {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                 ": Addr/port pair repeated." << std::endl;
                     return std::nullopt;
                 }
 
-                // TODO: Check that a *:port does not collide with a addr:port for the same port
+                if (l.addr == "0.0.0.0" && l.port == a.port && a.addr != "[::]") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                 ": Port is already configured." << std::endl;
+                    return std::nullopt;
+                }
 
-                main.listen.push_back({addr, port});
-            } catch (...) {
-                std::cerr << "Error at line " << listen_node.Mark().line+1 <<
-                             ": Format error for node 'main.listen'. Port is not a number." << std::endl;
-                return std::nullopt;
+                if (l.addr == "[::]" && l.port == a.port && a.addr != "0.0.0.0") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                 ": Port is already configured." << std::endl;
+                    return std::nullopt;
+                }
+
+                if (a.addr == "0.0.0.0" && l.port == a.port && l.addr != "[::]") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                 ": Port is already configured." << std::endl;
+                    return std::nullopt;
+                }
+
+                if (a.addr == "[::]" && l.port == a.port && l.addr != "0.0.0.0") {
+                    std::cerr << "Error at line " << item.Mark().line+1 <<
+                                 ": Port is already configured." << std::endl;
+                    return std::nullopt;
+                }
             }
+
+            main.listen.push_back(l);
         }
     }
 
@@ -360,6 +410,7 @@ std::optional<Config> parse_config(const std::string& cfg_file) noexcept {
 void dump_config(const Config& config) noexcept {
     std::cout << "main:" << std::endl;
     std::cout << "    tag_mappings_file = " << (config.main.tag_mappings_file.empty() ? "<none>":config.main.tag_mappings_file) << std::endl;
+    /*
     if (!config.main.listen.empty()) {
         std::cout << "    listen =";
         bool first = true;
@@ -368,6 +419,22 @@ void dump_config(const Config& config) noexcept {
             first = false;
         }
         std::cout << std::endl;
+    }
+    */
+    if (!config.main.listen.empty()) {
+        std::cout << "    listen:" << std::endl;
+        int i = 0;
+        for (const auto& a : config.main.listen) {
+            std::cout << "        " << i << ":" << std::endl;
+            std::cout << "            addr = " << a.addr << std::endl;
+            std::cout << "            port = " << a.port << std::endl;
+            std::cout << "            https = " << (a.https?"yes":"no") << std::endl;
+            if (a.https) {
+                std::cout << "            cert = " << a.cert << std::endl;
+                std::cout << "            key = " << a.key << std::endl;
+            }
+            i++;
+        }
     }
     std::cout << "logging:" << std::endl;
     std::cout << "    level = " << config.logging.levelName() << std::endl;

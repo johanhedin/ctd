@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <fstream>
 #include <thread>
 #include <chrono>
 #include <mutex>
@@ -29,6 +30,9 @@
 //   - https://github.com/pistacheio/pistache
 //   - https://github.com/oatpp/oatpp
 
+// ACME client candidate:
+//   - https://github.com/jmccl/acme-lw
+
 // How to use spdlog
 //   - https://www.youtube.com/watch?v=p2U0VvILysg
 
@@ -39,7 +43,11 @@ void signal_handler(int signal) { shutdown_handler(signal); }
 
 
 static const std::string PROGRAM_NAME_STR{"ctd"};
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+static const std::string PROGRAM_VERSION_STR{"0.99rc1.tls"};
+#else
 static const std::string PROGRAM_VERSION_STR{"0.99rc1"};
+#endif
 static const std::string DEFAULT_CFG_FILE{"/etc/ctd/ctd.yaml"};
 
 
@@ -55,6 +63,13 @@ void worker_function(const std::string& item, std::mutex& m, std::condition_vari
     }
 
     spdlog::info("Worker {} stopped.", item);
+}
+
+
+// Check if file f is readable
+bool readable(const std::string &f) {
+    std::ifstream fs(f);
+    return fs.good();
 }
 
 
@@ -214,25 +229,39 @@ int main(int argc, char** argv) {
 
     auto srv_pre_routing_handler = [](const auto &req, auto &res) {
         std::string remote_addr = req.remote_addr;
-        size_t colon_pos = remote_addr.find(':');
-        if (colon_pos != remote_addr.npos) {
+        std::string local_addr  = req.local_addr;
+
+        if (remote_addr.find(':') != remote_addr.npos) {
             remote_addr = "[" + remote_addr + "]";
         }
-        spdlog::info("Incoming REST request from {}:{}.", remote_addr, req.remote_port);
+        if (local_addr.find(':') != local_addr.npos) {
+            local_addr = "[" + local_addr + "]";
+        }
+        spdlog::info("Incoming REST request to {}:{} from {}:{}.", local_addr, req.local_port, remote_addr, req.remote_port);
         if (req.has_header("X-Ctd-Auth")) {
             res.status = httplib::StatusCode::Unauthorized_401;
             return httplib::Server::HandlerResponse::Handled;
         }
+
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+        if (req.ssl != nullptr) {
+            // Extract client cert if available
+            // Look here for example of how to get client cert: https://github.com/yhirose/cpp-httplib/pull/165
+        }
+#endif
+
         return httplib::Server::HandlerResponse::Unhandled;
     };
-    auto srv_logger = [](const auto&, const auto&) {
-        spdlog::info("Logging from httplib...");
-    };
+    //auto srv_logger = [](const auto&, const auto&) {
+    //    spdlog::info("Logging from httplib...");
+    //};
     auto hi_handler = [](const httplib::Request &, httplib::Response &res) {
         res.status = httplib::StatusCode::Accepted_202;
         res.set_content("Hi there!\n", "text/plain");
     };
-    auto api_handler = [&dict](const httplib::Request &, httplib::Response &res) {
+    auto api_handler = [&dict](const httplib::Request &req, httplib::Response &res) {
+        auto host = req.get_header_value("Host");
+        spdlog::info("Incoming request for /api. Host = {}", host);
         res.set_content(dict.dump(4) + "\n", "application/json");
     };
     auto root_handler = [](const httplib::Request &, httplib::Response &res) {
@@ -247,31 +276,53 @@ int main(int argc, char** argv) {
     }
 
     std::vector<std::pair<std::shared_ptr<httplib::Server>, std::thread>> servers;
-    for (auto &l : config->main.listen) {
-        auto s = std::make_shared<httplib::Server>();
-        s->set_logger(srv_logger);
+    for (const auto &l : config->main.listen) {
+        std::shared_ptr<httplib::Server> s;
+
+        if (l.https) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            if (!readable(l.cert)) {
+                spdlog::warn("Unable to read cert file {}. Skipping listen on {}:{} with https.", l.cert, l.addr, l.port);
+                continue;
+            }
+            if (!readable(l.key)) {
+                spdlog::warn("Unable to read key file {}. Skipping listen on {}:{} with https.", l.key, l.addr, l.port);
+                continue;
+            }
+
+            s = std::make_shared<httplib::SSLServer>(l.cert.c_str(), l.key.c_str());
+#else
+            spdlog::error("Requesting https for {}:{} but https support is not compiled in. Skipping.", l.addr, l.port);
+            continue;
+#endif
+        } else {
+            s = std::make_shared<httplib::Server>();
+        }
+        //s->set_logger(srv_logger);
         s->set_pre_routing_handler(srv_pre_routing_handler);
         s->Get("/", root_handler);
         s->Get("/hi", hi_handler);
         s->Get("/api", api_handler);
-        auto host = l.first;
-        auto port = l.second;
 
-        std::thread t([s, host, port]{
-            spdlog::info("REST server listening on {}:{}.", host, port);
-            auto tmp_host = host;
+        std::thread t([s, &l]{
+            auto tmp_host = l.addr;
             tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), '['), tmp_host.end());
             tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), ']'), tmp_host.end());
-            auto ret = s->listen(tmp_host, port);
+            auto ret = s->listen(tmp_host, l.port);
             if (ret == true) {
-                spdlog::info("REST server stopped listening on {}:{}.", host, port);
+                spdlog::info("REST server stopped listening on {}:{}.", l.addr, l.port);
             } else {
-                spdlog::error("Listen on {}:{} failed.", host, port);
+                if (l.https) {
+                    spdlog::error("Listen on {}:{} with https failed. Check address, port, cert file and/or key file.", l.addr, l.port);
+                } else {
+                    spdlog::error("Listen on {}:{} with http failed. Check address and/or port.", l.addr, l.port);
+                }
             }
         });
 
         s->wait_until_ready();
         if (s->is_running()) {
+            spdlog::info("REST server listening on {}:{} with {}.", l.addr, l.port, l.https?"https":"http");
             servers.push_back({std::move(s), std::move(t)});
         } else {
             t.join();

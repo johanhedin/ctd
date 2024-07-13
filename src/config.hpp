@@ -51,14 +51,23 @@ static const std::map<std::string, int> facility_map = {
     { "local7",   LOG_LOCAL7 }
 };
 
+
 class Config {
 public:
+    struct Listen {
+        std::string addr;
+        int         port;
+        bool        https;
+        std::string cert;
+        std::string key;
+    };
+
     class Main {
     public:
         Main() = default;
 
         std::string tag_mappings_file{};
-        std::vector<std::pair<std::string, int>> listen{};
+        std::vector<Listen> listen{};
     };
 
     class Logging {
