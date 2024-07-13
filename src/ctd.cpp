@@ -230,14 +230,10 @@ int main(int argc, char** argv) {
     auto srv_pre_routing_handler = [](const auto &req, auto &res) {
         std::string remote_addr = req.remote_addr;
         std::string local_addr  = req.local_addr;
+        if (remote_addr.find(':') != remote_addr.npos) remote_addr = "[" + remote_addr + "]";
+        if (local_addr.find(':') != local_addr.npos) local_addr = "[" + local_addr + "]";
 
-        if (remote_addr.find(':') != remote_addr.npos) {
-            remote_addr = "[" + remote_addr + "]";
-        }
-        if (local_addr.find(':') != local_addr.npos) {
-            local_addr = "[" + local_addr + "]";
-        }
-        spdlog::info("Incoming REST request to {}:{} from {}:{}.", local_addr, req.local_port, remote_addr, req.remote_port);
+        spdlog::debug("Incoming REST request to {}:{} from {}:{}.", local_addr, req.local_port, remote_addr, req.remote_port);
         if (req.has_header("X-Ctd-Auth")) {
             res.status = httplib::StatusCode::Unauthorized_401;
             return httplib::Server::HandlerResponse::Handled;
@@ -245,23 +241,48 @@ int main(int argc, char** argv) {
 
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
         if (req.ssl != nullptr) {
-            // Extract client cert if available
             // Look here for example of how to get client cert: https://github.com/yhirose/cpp-httplib/pull/165
+            std::string c;
+            std::string o;
+            std::string ou;
+            std::string cn;
+
+            auto peer_cert = SSL_get_peer_certificate(req.ssl);
+            if (peer_cert != nullptr) {
+                auto sn_obj = X509_get_subject_name(peer_cert);
+                if (sn_obj != nullptr) {
+                    int len;
+                    char tmp_str[128];
+
+                    len = X509_NAME_get_text_by_NID(sn_obj, NID_countryName, tmp_str, sizeof(tmp_str));
+                    if (len > 0) c.assign(tmp_str, len);
+
+                    len = X509_NAME_get_text_by_NID(sn_obj, NID_organizationName, tmp_str, sizeof(tmp_str));
+                    if (len > 0) o.assign(tmp_str, len);
+
+                    len = X509_NAME_get_text_by_NID(sn_obj, NID_organizationalUnitName, tmp_str, sizeof(tmp_str));
+                    if (len > 0) ou.assign(tmp_str, len);
+
+                    len = X509_NAME_get_text_by_NID(sn_obj, NID_commonName, tmp_str, sizeof(tmp_str));
+                    if (len > 0) cn.assign(tmp_str, len);
+                }
+
+                X509_free(peer_cert);
+
+                spdlog::debug("Client certificate info: C={}, O={}, OU={}, CN={}", c, o, ou, cn);
+            }
         }
 #endif
 
         return httplib::Server::HandlerResponse::Unhandled;
     };
-    //auto srv_logger = [](const auto&, const auto&) {
-    //    spdlog::info("Logging from httplib...");
-    //};
     auto hi_handler = [](const httplib::Request &, httplib::Response &res) {
         res.status = httplib::StatusCode::Accepted_202;
         res.set_content("Hi there!\n", "text/plain");
     };
     auto api_handler = [&dict](const httplib::Request &req, httplib::Response &res) {
         auto host = req.get_header_value("Host");
-        spdlog::info("Incoming request for /api. Host = {}", host);
+        spdlog::debug("Incoming request for /api. Host = {}", host);
         res.set_content(dict.dump(4) + "\n", "application/json");
     };
     auto root_handler = [](const httplib::Request &, httplib::Response &res) {
@@ -290,15 +311,22 @@ int main(int argc, char** argv) {
                 continue;
             }
 
-            s = std::make_shared<httplib::SSLServer>(l.cert.c_str(), l.key.c_str());
+            const char *ca = nullptr;
+            if (config->main.client_ca != "") {
+                if (!readable(config->main.client_ca)) {
+                    spdlog::warn("Unable to read client CA file {}. Skipping listen on {}:{} with https.", config->main.client_ca, l.addr, l.port);
+                    continue;
+                }
+                ca = config->main.client_ca.c_str();
+            }
+            s = std::make_shared<httplib::SSLServer>(l.cert.c_str(), l.key.c_str(), ca);
 #else
-            spdlog::error("Requesting https for {}:{} but https support is not compiled in. Skipping.", l.addr, l.port);
+            spdlog::error("https requested for {}:{} but https support is not compiled in. Skipping.", l.addr, l.port);
             continue;
 #endif
         } else {
             s = std::make_shared<httplib::Server>();
         }
-        //s->set_logger(srv_logger);
         s->set_pre_routing_handler(srv_pre_routing_handler);
         s->Get("/", root_handler);
         s->Get("/hi", hi_handler);
@@ -339,6 +367,7 @@ int main(int argc, char** argv) {
     {
         std::unique_lock<std::mutex> lock(run_mutex);
         run_cv.wait(lock, [&run]{ return !run; });
+        // TODO: Add timeout to wait and add loop to allow for periodic work
     }
 
     if (!servers.empty()) {
