@@ -182,7 +182,7 @@ int main(int argc, char** argv) {
     shutdown_handler = [&](int) -> void {
         spdlog::info("Signal caught. Stopping...");
         {
-            std::unique_lock<std::mutex> lock(run_mutex);
+            std::unique_lock<std::mutex> lock{run_mutex};
             run = false;
         }
         run_cv.notify_one();
@@ -361,13 +361,17 @@ int main(int argc, char** argv) {
         spdlog::info("REST server started. Listening on {} address{}.", servers.size(), servers.size() > 1 ? "es":"");
     }
 
-    // This is the main loop. Just wait until the stop_cv is signaled from
-    // the shutdown handler
     spdlog::info("Running. Stop with SIGINT or SIGTERM.");
-    {
-        std::unique_lock<std::mutex> lock(run_mutex);
-        run_cv.wait(lock, [&run]{ return !run; });
-        // TODO: Add timeout to wait and add loop to allow for periodic work
+
+    // This is the main loop. Just wait until the run_cv is signaled from
+    // the shutdown handler. Do bookkeeping work every X seconds
+    while (run) {
+        using namespace std::chrono_literals;
+
+        //spdlog::debug("Main thread doing bookkeeping");
+
+        std::unique_lock<std::mutex> lock{run_mutex};
+        run_cv.wait_for(lock, 10s, [&run](){ return !run; });
     }
 
     if (!servers.empty()) {
