@@ -5,7 +5,7 @@ ctd
 `ctd` is a skeleton of a small threded deamon written in  C++17. The skeleton
 include examples of how to parse command line arguments with `argparse`, how read
 yaml configuration files with `yaml-cpp`, how to log with `spdlog`, how to
-embed a small HTTP REST server with `cpp-httplib` and how to handle JSON with
+embed a small HTTP(S) REST server with `cpp-httplib` and how to handle JSON with
 `nlohmann/json`. CMake is used as the build system and the configuration works
 with cmake from 3.6 all the way up to 3.28.
 
@@ -15,8 +15,9 @@ Requirements
 g++ 9.x or newer are available. It even builds on the EOL CentOS 6 (where g++ 9.1
 is available from the devtoolset-9 SCL and cmake 3.6 is available from EPEL).
 
-All external libraries that `ctd` depend on are linked as git submodules and
-the compiled binary does not link to any extra libraries.
+All external libraries that `ctd` depend on, except openssl, are linked as git
+submodules and the compiled binary does not link to any extra libraries other
+then openssl (if built with support for https).
 
 Download and build
 ----
@@ -36,6 +37,10 @@ Then configure and build with cmake:
 
  * `CMAKE_BUILD_TYPE={Debug,Release,RelWithDebInfo}` Defaults to `Debug` if not set
  * `CMAKE_INSTALL_PREFIX=<path>` Defaults to `/usr/local` if not set
+
+To build with support for https, make sure that openssl >= 3.0.0 is available on
+your system and discoverable via `pgk-config`. If so, openssl will be picked
+up automatically by cmake.
 
 Keep up to date with changes
 ----
