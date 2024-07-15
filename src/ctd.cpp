@@ -11,6 +11,7 @@
 #include <functional>
 #include <utility>
 #include <algorithm>
+#include <queue>
 
 #include "argparse/argparse.hpp"
 
@@ -37,9 +38,9 @@
 //   - https://www.youtube.com/watch?v=p2U0VvILysg
 
 // Make it possible to have a lambda as a signal handler (assign a lambda to
-// the global variable shutdown_handler)
-std::function<void(int)> shutdown_handler;
-static void signal_handler(int signal) { shutdown_handler(signal); }
+// the global variable signal_callback befor registering signal_handler)
+std::function<void(int)> signal_callback;
+static void signal_handler(int signal) { signal_callback(signal); }
 
 
 static const std::string PROGRAM_NAME_STR{"ctd"};
@@ -159,22 +160,21 @@ int main(int argc, char** argv) {
 
     spdlog::info("Starting...");
 
-    // SIGTERM and SIGINT handling for stopping the daemon
-    bool run{true};
-    std::mutex run_mutex;
-    std::condition_variable run_cv;
-
-    shutdown_handler = [&](int) -> void {
-        spdlog::info("Signal caught. Stopping...");
+    // Signal handling
+    std::queue<int> sq;
+    std::mutex sq_mutex;
+    std::condition_variable sq_cv;
+    signal_callback = [&](int signal) -> void {
+        spdlog::info("Signal {} caught. Pushing to signal queue.", signal);
         {
-            std::unique_lock<std::mutex> lock{run_mutex};
-            run = false;
+            std::unique_lock<std::mutex> l{sq_mutex};
+            sq.push(signal);
         }
-        run_cv.notify_one();
+        sq_cv.notify_one();
     };
-
     std::signal(SIGINT,  signal_handler);
     std::signal(SIGTERM, signal_handler);
+    std::signal(SIGHUP,  signal_handler);
 
     using json = nlohmann::json;
     json dict = {
@@ -316,17 +316,41 @@ int main(int argc, char** argv) {
         spdlog::info("REST server started. Listening on {} address{}.", servers.size(), servers.size() > 1 ? "es":"");
     }
 
-    spdlog::info("Running. Stop with SIGINT or SIGTERM.");
+    spdlog::info("{} {} running. Stop with SIGINT or SIGTERM.", PROGRAM_NAME_STR, PROGRAM_VERSION_STR);
 
-    // This is the main loop. Just wait until the run_cv is signaled from
-    // the shutdown handler. Do bookkeeping work every X seconds
+    // Main loop. Pop signals from the signal queue and act accordingly. Do
+    // regular bookkeeping every 10s-ish
+    bool run{true};
     while (run) {
         using namespace std::chrono_literals;
+        std::unique_lock<std::mutex> l{sq_mutex};
+        if (!sq.empty()) {
+            auto s = sq.front();
+            sq.pop();
+            l.unlock();
 
-        //spdlog::debug("Main thread doing bookkeeping");
-
-        std::unique_lock<std::mutex> lock{run_mutex};
-        run_cv.wait_for(lock, 10s, [&run](){ return !run; });
+            switch (s)  {
+                case SIGTERM:
+                    spdlog::info("SIGTERM received. Stopping.");
+                    run = false;
+                    break;
+                case SIGINT:
+                    spdlog::info("SIGINT received. Stopping.");
+                    run = false;
+                    break;
+                case SIGHUP:
+                    spdlog::debug("SIGHUP received. Restarting REST server...");
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            sq_cv.wait_for(l, 10s, [&sq](){ return !sq.empty(); });
+            if (sq.empty()) {
+                l.unlock();
+                spdlog::debug("Main thread doing bookkeeping");
+            }
+        }
     }
 
     if (!servers.empty()) {
