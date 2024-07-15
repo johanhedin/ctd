@@ -11,7 +11,7 @@
 #include <functional>
 #include <utility>
 #include <algorithm>
-#include <queue>
+#include <deque>
 
 #include "argparse/argparse.hpp"
 
@@ -38,8 +38,8 @@
 //   - https://www.youtube.com/watch?v=p2U0VvILysg
 
 // Make it possible to have a lambda as a signal handler (assign a lambda to
-// the global variable signal_callback befor registering signal_handler)
-std::function<void(int)> signal_callback;
+// the global variable signal_callback before registering signal_handler)
+static std::function<void(int)> signal_callback = nullptr;
 static void signal_handler(int signal) { signal_callback(signal); }
 
 
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 
     // Create and configure argparse instance
     argparse::ArgumentParser parser(PROGRAM_NAME_STR, PROGRAM_VERSION_STR);
-    parser.add_description("A template daemon");
+    parser.add_description("A small skeleton daemon.");
     parser.add_argument("-c", "--config-file").metavar("FILE")
         .help(std::string() + "configuration file to use. Defaults to "  + DEFAULT_CFG_FILE + " if not set");
     parser.add_argument("--validate").flag()
@@ -89,7 +89,8 @@ int main(int argc, char** argv) {
         cfg_file = *cf;
     }
 
-    // Parse config file. Stop if it is invalid
+    // Parse config file. Stop if it is invalid. Relevant errors have been written
+    // to stderr during parsing.
     auto config = ctd::parse_config(cfg_file);
     if (!config) return 3;
 
@@ -158,17 +159,22 @@ int main(int argc, char** argv) {
     spdlog::critical("Testing critical: critical");
     spdlog::info(" ");
 
-    spdlog::info("Starting...");
+    spdlog::info("{} version {} starting...", PROGRAM_NAME_STR, PROGRAM_VERSION_STR);
 
-    // Signal handling
-    std::queue<int> sq;
+    // Signal handling. We use a mutex protected deque to "send" the signals to
+    // the main thread (see further down). SIGINT/SIGTERM have priority.
+    std::deque<int> sq;
     std::mutex sq_mutex;
     std::condition_variable sq_cv;
     signal_callback = [&](int signal) -> void {
         spdlog::info("Signal {} caught. Pushing to signal queue.", signal);
         {
             std::unique_lock<std::mutex> l{sq_mutex};
-            sq.push(signal);
+            if (signal == SIGTERM || signal == SIGINT) {
+                sq.push_front(signal);
+            } else {
+                sq.push_back(signal);
+            }
         }
         sq_cv.notify_one();
     };
@@ -182,11 +188,11 @@ int main(int argc, char** argv) {
         { "version", PROGRAM_VERSION_STR }
     };
 
-    auto srv_pre_routing_handler = [](const auto &req, auto &res) {
+    auto srv_pre_routing_handler = [](const httplib::Request &req, httplib::Response &res) -> httplib::Server::HandlerResponse {
         std::string remote_addr = req.remote_addr;
         std::string local_addr  = req.local_addr;
         if (remote_addr.find(':') != remote_addr.npos) remote_addr = "[" + remote_addr + "]";
-        if (local_addr.find(':') != local_addr.npos) local_addr = "[" + local_addr + "]";
+        if (local_addr.find(':')  != local_addr.npos)  local_addr  = "[" + local_addr  + "]";
 
         spdlog::debug("Incoming REST request to {}:{} from {}:{}.", local_addr, req.local_port, remote_addr, req.remote_port);
         if (req.has_header("X-Ctd-Auth")) {
@@ -247,99 +253,133 @@ int main(int argc, char** argv) {
         res.set_content(json_res.dump(4) + "\n", "application/json");
     };
 
-    if (!config->main.listen.empty()) {
-        spdlog::info("Starting REST server...");
-    }
+    class Srv {
+    public:
+        Srv(const ctd::Config::Listen &l, const std::string &ca) :
+            addr(l.addr), port(l.port), https(l.https), cert(l.cert), key(l.key), ca(ca) {};
+        Srv() = default;
+        std::shared_ptr<httplib::Server> s{nullptr};
+        std::thread                      t{};
+        std::string                      addr{};
+        int                              port{-1};
+        bool                             https{false};
+        std::string                      cert{};
+        std::string                      key{};
+        std::string                      ca{};
+    };
+    std::vector<Srv> servers;
 
-    std::vector<std::pair<std::shared_ptr<httplib::Server>, std::thread>> servers;
-    for (const auto &l : config->main.listen) {
-        std::shared_ptr<httplib::Server> s;
+    // Function for staring the REST server and listen to all configured
+    // addresses.
+    auto start_rest_server = [&]() {
+        for (const auto &l : config->main.listen) {
+            Srv srv(l, config->main.client_ca);
 
-        if (l.https) {
+            if (srv.https) {
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            if (!readable(l.cert)) {
-                spdlog::warn("Unable to read cert file {}. Skipping listen on {}:{} with https.", l.cert, l.addr, l.port);
-                continue;
-            }
-            if (!readable(l.key)) {
-                spdlog::warn("Unable to read key file {}. Skipping listen on {}:{} with https.", l.key, l.addr, l.port);
-                continue;
-            }
-
-            const char *ca = nullptr;
-            if (config->main.client_ca != "") {
-                if (!readable(config->main.client_ca)) {
-                    spdlog::warn("Unable to read client CA file {}. Skipping listen on {}:{} with https.", config->main.client_ca, l.addr, l.port);
+                if (!readable(srv.cert)) {
+                    spdlog::warn("Unable to read cert file {}. Skipping listen on {}:{} with https.", srv.cert, srv.addr, srv.port);
                     continue;
                 }
-                ca = config->main.client_ca.c_str();
-            }
-            s = std::make_shared<httplib::SSLServer>(l.cert.c_str(), l.key.c_str(), ca);
-#else
-            spdlog::error("https requested for {}:{} but https support is not compiled in. Skipping.", l.addr, l.port);
-            continue;
-#endif
-        } else {
-            s = std::make_shared<httplib::Server>();
-        }
-        s->set_pre_routing_handler(srv_pre_routing_handler);
-        s->Get("/", root_handler);
-        s->Get("/hi", hi_handler);
-        s->Get("/api", api_handler);
-
-        std::thread t([s, &l]{
-            auto tmp_host = l.addr;
-            tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), '['), tmp_host.end());
-            tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), ']'), tmp_host.end());
-            auto ret = s->listen(tmp_host, l.port);
-            if (ret == true) {
-                spdlog::info("REST server stopped listening on {}:{}.", l.addr, l.port);
-            } else {
-                if (l.https) {
-                    spdlog::error("Listen on {}:{} with https failed. Check address, port, cert file and/or key file.", l.addr, l.port);
-                } else {
-                    spdlog::error("Listen on {}:{} with http failed. Check address and/or port.", l.addr, l.port);
+                if (!readable(srv.key)) {
+                    spdlog::warn("Unable to read key file {}. Skipping listen on {}:{} with https.", srv.key, srv.addr, srv.port);
+                    continue;
                 }
-            }
-        });
 
-        s->wait_until_ready();
-        if (s->is_running()) {
-            spdlog::info("REST server listening on {}:{} with {}.", l.addr, l.port, l.https?"https":"http");
-            servers.push_back({std::move(s), std::move(t)});
+                if (!srv.ca.empty() && !readable(srv.ca)) {
+                    spdlog::warn("Unable to read client CA file {}. Skipping listen on {}:{} with https.", srv.ca, srv.addr, srv.port);
+                    continue;
+                }
+                srv.s = std::make_shared<httplib::SSLServer>(srv.cert.c_str(), srv.key.c_str(), srv.ca.empty() ? nullptr:srv.ca.c_str());
+#else
+                spdlog::error("https requested for {}:{} but https support is not compiled in. Skipping.", srv.addr, srv.port);
+                continue;
+#endif
+            } else {
+                srv.s = std::make_shared<httplib::Server>();
+            }
+            srv.s->set_pre_routing_handler(srv_pre_routing_handler);
+            srv.s->Get("/", root_handler);
+            srv.s->Get("/hi", hi_handler);
+            srv.s->Get("/api", api_handler);
+
+            srv.t = std::thread([](std::shared_ptr<httplib::Server> s, std::string addr, int port, bool https){
+                auto tmp_host = addr;
+                tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), '['), tmp_host.end());
+                tmp_host.erase(std::remove(tmp_host.begin(), tmp_host.end(), ']'), tmp_host.end());
+                auto ret = s->listen(tmp_host, port);
+                if (ret == true) {
+                    spdlog::info("REST server stopped listening on {}:{}.", addr, port);
+                } else {
+                    if (https) {
+                        spdlog::error("Listen on {}:{} with https failed. Check address, port, cert file and/or key file.", addr, port);
+                    } else {
+                        spdlog::error("Listen on {}:{} with http failed. Check address and/or port.", addr, port);
+                    }
+                }
+            }, srv.s, srv.addr, srv.port, srv.https);
+
+            srv.s->wait_until_ready();
+            if (srv.s->is_running()) {
+                spdlog::info("REST server listening on {}:{} with {}.", srv.addr, srv.port, srv.https?"https":"http");
+                servers.push_back(std::move(srv));
+            } else {
+                srv.t.join();
+            }
+        }
+    };
+
+    // Function for stopping the REST server.
+    auto stop_rest_server = [&]() {
+        for (auto &s : servers) {
+            s.s->stop();
+            if (s.t.joinable()) s.t.join();
+        }
+
+        servers.clear();
+    };
+
+    if (!config->main.listen.empty()) {
+        spdlog::info("Starting REST server...");
+        start_rest_server();
+        if (servers.size() > 0) {
+            spdlog::info("REST server started. Listening on {} address{}.", servers.size(), servers.size() == 1 ? "":"es");
         } else {
-            t.join();
+            spdlog::warn("Failed to start REST server.");
         }
     }
 
-    if (!servers.empty()) {
-        spdlog::info("REST server started. Listening on {} address{}.", servers.size(), servers.size() > 1 ? "es":"");
-    }
+    spdlog::info("Running. Stop with SIGINT or SIGTERM.");
 
-    spdlog::info("{} {} running. Stop with SIGINT or SIGTERM.", PROGRAM_NAME_STR, PROGRAM_VERSION_STR);
-
-    // Main loop. Pop signals from the signal queue and act accordingly. Do
-    // regular bookkeeping every 10s-ish
+    // Main loop. Pops signals from the signal queue and act accordingly. Do
+    // regular bookkeeping every 10-ish second
     bool run{true};
     while (run) {
         using namespace std::chrono_literals;
         std::unique_lock<std::mutex> l{sq_mutex};
         if (!sq.empty()) {
-            auto s = sq.front();
-            sq.pop();
+            auto signal = sq.front();
+            sq.pop_front();
             l.unlock();
 
-            switch (s)  {
+            switch (signal)  {
                 case SIGTERM:
-                    spdlog::info("SIGTERM received. Stopping.");
+                    spdlog::info("SIGTERM received. Stopping...");
                     run = false;
                     break;
                 case SIGINT:
-                    spdlog::info("SIGINT received. Stopping.");
+                    spdlog::info("SIGINT received. Stopping...");
                     run = false;
                     break;
                 case SIGHUP:
-                    spdlog::debug("SIGHUP received. Restarting REST server...");
+                    spdlog::info("Restarting REST server...");
+                    stop_rest_server();
+                    start_rest_server();
+                    if (servers.size() > 0) {
+                        spdlog::info("REST server restarted. Listening on {} address{}.", servers.size(), servers.size() == 1 ? "":"es");
+                    } else {
+                        spdlog::warn("Failed to restart REST server.");
+                    }
                     break;
                 default:
                     break;
@@ -355,14 +395,11 @@ int main(int argc, char** argv) {
 
     if (!servers.empty()) {
         spdlog::info("Stopping REST server...");
-        for (auto &s : servers) {
-            s.first->stop();
-            if (s.second.joinable()) s.second.join();
-        }
+        stop_rest_server();
         spdlog::info("REST server stopped.");
     }
 
-    spdlog::info("Stopped.");
+    spdlog::info("Successfully stopped. Bye.");
 
     return 0;
 }
