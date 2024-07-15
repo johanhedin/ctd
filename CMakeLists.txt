@@ -58,6 +58,7 @@ target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/cpp-httplib)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/json/include)
 
 # Add yaml-cpp as a static submodule (.a)
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE) # Needed to silence 3.4 version warning
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/yaml-cpp/include)
 target_link_libraries(ctd yaml-cpp)
