@@ -52,13 +52,6 @@ static const std::string PROGRAM_VERSION_STR{"0.99rc1"};
 static const std::string DEFAULT_CFG_FILE{"/etc/ctd/ctd.yaml"};
 
 
-// Check if file f is readable
-static bool readable(const std::string &f) {
-    std::ifstream fs(f);
-    return fs.good();
-}
-
-
 int main(int argc, char** argv) {
     std::string cfg_file{DEFAULT_CFG_FILE};
 
@@ -277,6 +270,9 @@ int main(int argc, char** argv) {
 
             if (srv.https) {
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+                // Check if file f is readable
+                auto readable = [](const std::string &f) -> bool { std::ifstream fs(f); return fs.good(); };
+
                 if (!readable(srv.cert)) {
                     spdlog::warn("Unable to read cert file {}. Skipping listen on {}:{} with https.", srv.cert, srv.addr, srv.port);
                     continue;
