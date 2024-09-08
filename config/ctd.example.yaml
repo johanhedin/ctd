@@ -16,11 +16,11 @@ main:
     # Example file (first row is the header row):
     #    tag,id
     #    123,id_one
-    #    2343,od_001
-    #    3421,Nice_id_34
+    #    2343,id_001
+    #    3421,nice_id_34
     #
     # Optional.
-    tag_mappings_file: /usr/share/ctd/tag_mappings.csv
+    tag_mappings_file: ../config/tag_mappings.example.csv
 
     # Enable the build in REST server by specifying a list of address/port
     # combinations the server should bind to. One bind object can have the
