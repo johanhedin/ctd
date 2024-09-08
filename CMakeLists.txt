@@ -57,6 +57,9 @@ target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/cpp-httplib)
 # Add nlohmann/json submodule to the include paths (nlohmann/json is include only)
 target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/json/include)
 
+# Add ashtum/lazycsv submodule to the include paths (ashtum/lazycsv is include only)
+target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/lazycsv/include)
+
 # Add yaml-cpp as a static submodule (.a)
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE) # Needed to silence 3.4 version warning
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
