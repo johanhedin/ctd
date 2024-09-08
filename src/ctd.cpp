@@ -24,6 +24,8 @@
 
 #include "nlohmann/json.hpp"
 
+#include "lazycsv.hpp"
+
 #include "config.hpp"
 #include "config_parser.hpp"
 
@@ -388,6 +390,19 @@ int main(int argc, char** argv) {
             if (sq.empty()) {
                 l.unlock();
                 spdlog::debug("Main thread doing bookkeeping");
+
+                std::string tag_mappings_file = config->main.tag_mappings_file;
+                spdlog::debug("Reading tag_mappings from {}", tag_mappings_file);
+
+                try {
+                    lazycsv::parser parser{tag_mappings_file};
+                    for (const auto& row : parser) {
+                        const auto [tag, id] = row.cells(0, 1);
+                        spdlog::debug("{},{}", tag.raw(), id.raw());
+                    }
+                } catch(const lazycsv::error &e) {
+                    spdlog::warn("Unable to read tag_mappings file {}: {}", tag_mappings_file, e.what());
+                }
             }
         }
     }

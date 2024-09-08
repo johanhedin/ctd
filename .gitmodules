@@ -14,3 +14,6 @@
 [submodule "json"]
 	path = json
 	url = https://github.com/nlohmann/json.git
+[submodule "lazycsv"]
+	path = lazycsv
+	url = https://github.com/ashtum/lazycsv.git
