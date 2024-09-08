@@ -37,6 +37,9 @@
 // How to use spdlog
 //   - https://www.youtube.com/watch?v=p2U0VvILysg
 
+// CSV parser candidates
+//   - https://github.com/ashaduri/csv-parser
+
 // Make it possible to have a lambda as a signal handler (assign a lambda to
 // the global variable signal_callback before registering signal_handler)
 static std::function<void(int)> signal_callback = nullptr;
@@ -77,7 +80,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
-    // Extract config file, if set
+    // Extract name of config file, if set
     if (auto cf = parser.present("-c")) {
         cfg_file = *cf;
     }
