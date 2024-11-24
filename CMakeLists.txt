@@ -31,13 +31,13 @@ if(NOT TARGET uninstall)
 endif()
 
 # Define the target for our program
-add_executable(ctd src/ctd.cpp src/config_parser.cpp)
+add_executable(${CMAKE_PROJECT_NAME} src/ctd.cpp src/config_parser.cpp)
 
 # Add compile and link options to our target
-target_compile_options(ctd PRIVATE -std=gnu++17)
-target_compile_options(ctd PRIVATE -Wall)
-target_compile_options(ctd PRIVATE -Wextra)
-target_compile_options(ctd PRIVATE -pedantic)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -std=gnu++17)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wextra)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -pedantic)
 #target_compile_options(ctd PRIVATE -pg)
 #target_link_options(ctd PRIVATE -pg)
 
@@ -46,25 +46,25 @@ find_package(Threads REQUIRED)
 target_link_libraries(ctd Threads::Threads)
 
 # Add argparse submodule to the include paths (argparse is include only)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/argparse/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/argparse/include)
 
 # Add spdlog submodule to the include paths (we use spdlog as include only)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/spdlog/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/spdlog/include)
 
 # Add cpp-httplig submodule to the include paths (cpp-httpdlib is include only)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/cpp-httplib)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/cpp-httplib)
 
 # Add nlohmann/json submodule to the include paths (nlohmann/json is include only)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/json/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/json/include)
 
 # Add ashtum/lazycsv submodule to the include paths (ashtum/lazycsv is include only)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/lazycsv/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/lazycsv/include)
 
 # Add yaml-cpp as a static submodule (.a)
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "" FORCE) # Needed to silence 3.4 version warning
 add_subdirectory(yaml-cpp EXCLUDE_FROM_ALL)
-target_include_directories(ctd PRIVATE ${PROJECT_SOURCE_DIR}/yaml-cpp/include)
-target_link_libraries(ctd yaml-cpp)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/yaml-cpp/include)
+target_link_libraries(${CMAKE_PROJECT_NAME} yaml-cpp)
 
 set(CTD_USING_OPENSSL "No")
 message(STATUS "Checking for openssl...")
@@ -77,22 +77,23 @@ if(OPENSSL_FOUND)
         message(STATUS "TLS support will be compiled in.")
         set(CTD_USING_OPENSSL "Yes")
         add_definitions(-DCPPHTTPLIB_OPENSSL_SUPPORT)
-        target_include_directories(ctd PRIVATE ${OPENSSL_INCLUDE_DIRS})
-        target_link_directories(ctd PRIVATE ${OPENSSL_LIBRARY_DIRS})
-        target_link_libraries(ctd ${OPENSSL_LIBRARIES})
+        target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OPENSSL_INCLUDE_DIRS})
+        target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE ${OPENSSL_LIBRARY_DIRS})
+        target_link_libraries(${CMAKE_PROJECT_NAME} ${OPENSSL_LIBRARIES})
     endif()
 else()
     message(STATUS "openssl not found. TLS support will not be compiled in.")
 endif()
 
 # Add support for installing our program
-install(TARGETS ctd RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
+#install(TARGETS ctd RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR})
+install(TARGETS ${CMAKE_PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Create empty install_manifest.txt so that it does not get owned by root on sudo make install
 execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/install_manifest.txt")
 
 # Dump our config for review
-message(STATUS "The following build options will be used for ctd:")
+message(STATUS "The following build options will be used for ${CMAKE_PROJECT_NAME}:")
 message(STATUS "    CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 message(STATUS "    CTD_USING_OPENSSL=${CTD_USING_OPENSSL}")
 message(STATUS "    CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}")
